@@ -30,7 +30,7 @@ Sem essas variáveis, a interface pode abrir, mas consultas e cadastros retornar
 
 1. Envie esta pasta para um repositório Git e importe-o no Vercel.
 2. Em **Settings → Environment Variables**, cadastre `SUPABASE_URL` e `SUPABASE_SECRET_KEY` para Production, Preview e Development.
-3. Faça o deploy. O Vercel reconhece `server.js` como aplicação Express e publica os arquivos de `public/` pela CDN, sem configuração adicional.
+3. Faça o deploy. O arquivo `vercel.json` encaminha todas as requisições para `server.js`, que atende a API e os arquivos de `public/`.
 
 ## Verificação
 
