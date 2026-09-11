@@ -17,9 +17,9 @@ Nunca coloque a chave secreta no HTML, em `public/`, no Git ou em uma variável 
 
 ## Migrações automáticas
 
-As migrations são aplicadas automaticamente pelo GitHub Actions quando houver alteração em `supabase/migrations/` na branch `main` ou `master`. Para ativar esse fluxo, crie no repositório a secret `SUPABASE_DB_URL` com a string de conexão direta do banco disponível em **Supabase → Project Settings → Database → Connection string**.
+As migrations são aplicadas automaticamente pelo GitHub Actions quando houver alteração em `supabase/migrations/` na branch `main` ou `master`. Para ativar esse fluxo, crie no repositório a secret `SUPABASE_DB_PASSWORD` com a senha do banco PostgreSQL disponível em **Supabase → Project Settings → Database**.
 
-Não use a URL pública da API nem a chave `anon` nessa secret. Depois de configurar `SUPABASE_DB_URL`, basta publicar a migration no GitHub; o workflow `.github/workflows/supabase-migrations.yml` executará `supabase db push`.
+O workflow monta e codifica a connection string automaticamente para o projeto Ponto-Obra. Não use a URL pública da API, a chave `anon` ou a service key nessa secret. Depois de configurar `SUPABASE_DB_PASSWORD`, basta publicar a migration no GitHub; o workflow `.github/workflows/supabase-migrations.yml` executará `supabase db push`.
 
 ## Rodar localmente
 
