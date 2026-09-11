@@ -25,10 +25,18 @@ function mostrarMensagem(mensagem, tipo = 'success') {
 }
 
 async function api(url, opcoes = {}) {
-    const resposta = await fetch(url, opcoes);
-    const dados = await resposta.json().catch(() => ({}));
-    if (!resposta.ok) throw new Error(dados.error || 'Não foi possível concluir a operação.');
-    return dados;
+    try {
+        const resposta = await fetch(url, {
+            cache: 'no-store',
+            ...opcoes
+        });
+        const dados = await resposta.json().catch(() => ({}));
+        if (!resposta.ok) throw new Error(dados.error || 'Não foi possível concluir a operação.');
+        return dados;
+    } catch (error) {
+        if (error instanceof TypeError) throw new Error('Não foi possível conectar ao servidor.');
+        throw error;
+    }
 }
 
 document.addEventListener('DOMContentLoaded', () => {

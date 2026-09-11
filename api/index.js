@@ -193,9 +193,19 @@ app.get('/api/relatorio', async (req, res, next) => {
 
 app.use('/api', (_req, res) => res.status(404).json({ error: 'Rota não encontrada.' }));
 app.use((error, _req, res, _next) => {
+    if (error instanceof SyntaxError && error.status === 400 && error.type === 'entity.parse.failed') {
+        return res.status(400).json({ error: 'JSON inválido.' });
+    }
     console.error('Erro na API:', error.cause || error);
-    const status = error.code === 'SUPABASE_NOT_CONFIGURED' ? 503 : 500;
-    res.status(status).json({ error: status === 503 ? 'Banco de dados ainda não configurado.' : 'Erro interno. Tente novamente.' });
+    const configuracaoIncompleta = error.code === 'SUPABASE_NOT_CONFIGURED';
+    const urlInvalida = error.code === 'SUPABASE_INVALID_URL';
+    const status = configuracaoIncompleta || urlInvalida ? 503 : 500;
+    const mensagem = configuracaoIncompleta
+        ? 'Banco de dados ainda não configurado.'
+        : urlInvalida
+            ? 'SUPABASE_URL inválida. Use a URL https://...supabase.co do projeto.'
+            : 'Erro interno. Tente novamente.';
+    res.status(status).json({ error: mensagem });
 });
 
 module.exports = app;

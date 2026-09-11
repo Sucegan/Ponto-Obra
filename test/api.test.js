@@ -27,6 +27,14 @@ test('rejeita cadastro inconsistente', async () => {
     assert.equal(resposta.status, 400);
 });
 
+test('rejeita JSON inválido com erro de requisição', async () => {
+    const resposta = await fetch(`${baseUrl}/api/funcionarios`, {
+        method: 'POST', headers: { 'content-type': 'application/json' }, body: '{'
+    });
+    assert.equal(resposta.status, 400);
+    assert.deepEqual(await resposta.json(), { error: 'JSON inválido.' });
+});
+
 test('rejeita intervalo invertido no relatório', async () => {
     const resposta = await fetch(`${baseUrl}/api/relatorio?inicio=2026-09-10&fim=2026-09-01`);
     assert.equal(resposta.status, 400);
@@ -36,4 +44,9 @@ test('informa quando o Supabase ainda não foi configurado', async () => {
     const resposta = await fetch(`${baseUrl}/api/health`);
     assert.equal(resposta.status, 503);
     assert.deepEqual(await resposta.json(), { error: 'Banco de dados ainda não configurado.' });
+});
+
+test('exporta o servidor sem iniciar uma porta ao ser importado', () => {
+    const servidor = require('../server');
+    assert.equal(typeof servidor, 'function');
 });
