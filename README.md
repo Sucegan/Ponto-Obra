@@ -15,6 +15,12 @@ Sistema de ponto e diárias da Construtora GS, de Gilberto Sucegan, em Next.js, 
 
 Nunca coloque a chave secreta no HTML, em `public/`, no Git ou em uma variável com prefixo público.
 
+## Migrações automáticas
+
+As migrations são aplicadas automaticamente pelo GitHub Actions quando houver alteração em `supabase/migrations/` na branch `main` ou `master`. Para ativar esse fluxo, crie no repositório a secret `SUPABASE_DB_URL` com a string de conexão direta do banco disponível em **Supabase → Project Settings → Database → Connection string**.
+
+Não use a URL pública da API nem a chave `anon` nessa secret. Depois de configurar `SUPABASE_DB_URL`, basta publicar a migration no GitHub; o workflow `.github/workflows/supabase-migrations.yml` executará `supabase db push`.
+
 ## Rodar localmente
 
 No PowerShell, carregue as duas variáveis de ambiente e execute:
