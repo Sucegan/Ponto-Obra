@@ -74,6 +74,12 @@ test('valida edição sem consultar o banco', async () => {
     assert.equal(resposta.status, 400);
 });
 
+test('valida histórico mensal antes de consultar o banco', async () => {
+    const resposta = await fetch(`${baseUrl}/api/dashboard/historico?mes=2026-14`);
+    assert.equal(resposta.status, 400);
+    assert.deepEqual(await resposta.json(), { error: 'Mês inválido.' });
+});
+
 test('informa quando o Supabase ainda não foi configurado', async () => {
     const resposta = await fetch(`${baseUrl}/api/health`);
     assert.equal(resposta.status, 503);

@@ -218,6 +218,38 @@ app.get('/api/dashboard', async (req, res, next) => {
     } catch (error) { next(error); }
 });
 
+app.get('/api/dashboard/historico', async (req, res, next) => {
+    try {
+        const mes = String(req.query.mes || '');
+        if (!mesValido(mes)) return res.status(400).json({ error: 'Mês inválido.' });
+        const supabase = getSupabase();
+        const equipe = await buscarEquipe(supabase);
+        if (!equipe.length) return res.json([]);
+        const [ano, numeroMes] = mes.split('-').map(Number);
+        const inicio = new Date(Date.UTC(ano, numeroMes - 4, 1)).toISOString().slice(0, 10);
+        const fim = new Date(Date.UTC(ano, numeroMes, 1)).toISOString().slice(0, 10);
+        const { data: pontos, error } = await supabase.from('ponto')
+            .select('data,funcionario_id,status').gte('data', inicio).lt('data', fim)
+            .in('funcionario_id', equipe.map(({ id }) => id));
+        if (error) throw falhaSupabase(error);
+        const valores = new Map(equipe.map((f) => [f.id, Number(f.valor_diaria)]));
+        const historico = [];
+        for (let deslocamento = -3; deslocamento <= 0; deslocamento += 1) {
+            const dataMes = new Date(Date.UTC(ano, numeroMes - 1 + deslocamento, 1));
+            const chave = dataMes.toISOString().slice(0, 7);
+            const registros = (pontos || []).filter((ponto) => ponto.data.startsWith(chave));
+            historico.push({
+                mes: chave,
+                dias: registros.filter((ponto) => ponto.status === 'Trabalhou').length,
+                faltas: registros.filter((ponto) => ponto.status === 'Falta').length,
+                feriados: registros.filter((ponto) => ponto.status === 'Feriado').length,
+                gastos: registros.reduce((total, ponto) => total + (ponto.status === 'Trabalhou' || ponto.status === 'Feriado' ? valores.get(ponto.funcionario_id) || 0 : 0), 0)
+            });
+        }
+        res.json(historico);
+    } catch (error) { next(error); }
+});
+
 app.get('/api/relatorio', async (req, res, next) => {
     try {
         const { inicio, fim } = req.query;
