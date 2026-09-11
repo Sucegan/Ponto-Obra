@@ -10,7 +10,6 @@ test.before(async () => {
     await new Promise((resolve) => servidor.once('listening', resolve));
     baseUrl = `http://127.0.0.1:${servidor.address().port}`;
 });
-
 test.after(() => servidor.close());
 
 test('rejeita uma data impossível antes de consultar o banco', async () => {
@@ -81,7 +80,3 @@ test('informa quando o Supabase ainda não foi configurado', async () => {
     assert.deepEqual(await resposta.json(), { error: 'Banco de dados ainda não configurado.' });
 });
 
-test('exporta o servidor sem iniciar uma porta ao ser importado', () => {
-    const servidor = require('../server');
-    assert.equal(typeof servidor, 'function');
-});

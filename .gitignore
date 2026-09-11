@@ -3,5 +3,7 @@ node_modules/
 .env.local
 .vercel/
 supabase/.temp/
+.next/
+out/
 obra.db
 npm-debug.log*
