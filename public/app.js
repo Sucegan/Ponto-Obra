@@ -1,5 +1,6 @@
 let estadoPonto = {};
 let feedbackTimer;
+let chamadaRequisicao = 0;
 
 const moeda = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' });
 
@@ -76,13 +77,14 @@ async function carregarDashboard() {
 async function carregarChamadaPonto() {
     const dataSelecionada = document.getElementById('dataPonto').value;
     if (!dataSelecionada) return;
+    const requisicaoAtual = ++chamadaRequisicao;
     const container = document.getElementById('listaChamada');
     container.innerHTML = '<div class="card p-4 text-center text-muted">Carregando chamada…</div>';
     try {
         const [funcionarios, pontosDia] = await Promise.all([
             api('/api/funcionarios'), api(`/api/ponto?data=${encodeURIComponent(dataSelecionada)}`)
         ]);
-        if (document.getElementById('dataPonto').value !== dataSelecionada) return;
+        if (requisicaoAtual !== chamadaRequisicao || document.getElementById('dataPonto').value !== dataSelecionada) return;
         estadoPonto = Object.fromEntries(pontosDia.map((p) => [p.funcionario_id, p.status]));
         if (!funcionarios.length) {
             container.innerHTML = '<div class="card empty-state p-4 text-center text-muted">Cadastre um profissional na aba Equipe para iniciar a chamada.</div>';
@@ -100,6 +102,7 @@ async function carregarChamadaPonto() {
                 </div></div>`;
         }).join('');
     } catch (error) {
+        if (requisicaoAtual !== chamadaRequisicao) return;
         container.innerHTML = '<div class="card p-4 text-center text-danger">Não foi possível carregar a chamada.</div>';
         mostrarMensagem(error.message, 'danger');
     }

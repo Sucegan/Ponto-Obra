@@ -27,6 +27,12 @@ test('rejeita cadastro inconsistente', async () => {
     assert.equal(resposta.status, 400);
 });
 
+test('rejeita cadastro sem corpo sem gerar erro interno', async () => {
+    const resposta = await fetch(`${baseUrl}/api/funcionarios`, { method: 'POST' });
+    assert.equal(resposta.status, 400);
+    assert.deepEqual(await resposta.json(), { error: 'Preencha nome, cargo e valor da diária corretamente.' });
+});
+
 test('rejeita JSON inválido com erro de requisição', async () => {
     const resposta = await fetch(`${baseUrl}/api/funcionarios`, {
         method: 'POST', headers: { 'content-type': 'application/json' }, body: '{'
@@ -38,6 +44,21 @@ test('rejeita JSON inválido com erro de requisição', async () => {
 test('rejeita intervalo invertido no relatório', async () => {
     const resposta = await fetch(`${baseUrl}/api/relatorio?inicio=2026-09-10&fim=2026-09-01`);
     assert.equal(resposta.status, 400);
+});
+
+test('valida o mês antes de consultar o banco', async () => {
+    const resposta = await fetch(`${baseUrl}/api/dashboard?mes=2026-13`);
+    assert.equal(resposta.status, 400);
+    assert.deepEqual(await resposta.json(), { error: 'Mês inválido.' });
+});
+
+test('valida o status do ponto antes de consultar o banco', async () => {
+    const resposta = await fetch(`${baseUrl}/api/ponto`, {
+        method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ data: '2026-09-11', funcionario_id: 1, status: 'Ausente' })
+    });
+    assert.equal(resposta.status, 400);
+    assert.deepEqual(await resposta.json(), { error: 'Dados do ponto inválidos.' });
 });
 
 test('informa quando o Supabase ainda não foi configurado', async () => {

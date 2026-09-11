@@ -4,6 +4,10 @@ const { getSupabase } = require('../lib/supabase');
 const app = express();
 app.disable('x-powered-by');
 app.use(express.json({ limit: '100kb' }));
+app.use('/api', (_req, res, next) => {
+    res.set('Cache-Control', 'no-store');
+    next();
+});
 
 const STATUS_VALIDOS = new Set(['Trabalhou', 'Falta', 'Feriado']);
 const DATA_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -32,6 +36,16 @@ function falhaSupabase(error) {
     return falha;
 }
 
+function respostaErroBanco(error) {
+    if (error?.code === '23505') return { status: 409, mensagem: 'Já existe um registro igual.' };
+    if (error?.code === '23503') return { status: 409, mensagem: 'O funcionário informado não existe.' };
+    return null;
+}
+
+function corpoObjeto(body) {
+    return body && typeof body === 'object' && !Array.isArray(body) ? body : {};
+}
+
 async function buscarEquipe(supabase) {
     const { data, error } = await supabase
         .from('funcionarios')
@@ -57,9 +71,10 @@ app.get('/api/funcionarios', async (_req, res, next) => {
 
 app.post('/api/funcionarios', async (req, res, next) => {
     try {
-        const nome = String(req.body.nome || '').trim();
-        const cargo = String(req.body.cargo || '').trim() || 'Operário';
-        const valorDiaria = Number(req.body.valor_diaria);
+        const body = corpoObjeto(req.body);
+        const nome = String(body.nome || '').trim();
+        const cargo = String(body.cargo || '').trim() || 'Operário';
+        const valorDiaria = Number(body.valor_diaria);
         if (nome.length < 2 || nome.length > 120 || cargo.length > 80 || !Number.isFinite(valorDiaria) || valorDiaria <= 0 || valorDiaria > 1000000) {
             return res.status(400).json({ error: 'Preencha nome, cargo e valor da diária corretamente.' });
         }
@@ -103,11 +118,21 @@ app.get('/api/ponto', async (req, res, next) => {
 
 app.post('/api/ponto', async (req, res, next) => {
     try {
-        const { data, funcionario_id: funcionarioId, status } = req.body;
+        const { data, funcionario_id: funcionarioId, status } = corpoObjeto(req.body);
         if (!dataValida(data) || !idValido(funcionarioId) || !STATUS_VALIDOS.has(status)) {
             return res.status(400).json({ error: 'Dados do ponto inválidos.' });
         }
-        const { data: registro, error } = await getSupabase()
+        const supabase = getSupabase();
+        const { data: funcionario, error: erroFuncionario } = await supabase
+            .from('funcionarios')
+            .select('id')
+            .eq('id', Number(funcionarioId))
+            .eq('ativo', true)
+            .maybeSingle();
+        if (erroFuncionario) throw falhaSupabase(erroFuncionario);
+        if (!funcionario) return res.status(404).json({ error: 'Funcionário ativo não encontrado.' });
+
+        const { data: registro, error } = await supabase
             .from('ponto')
             .upsert({ data, funcionario_id: Number(funcionarioId), status, updated_at: new Date().toISOString() }, { onConflict: 'data,funcionario_id' })
             .select('funcionario_id,status')
@@ -119,7 +144,7 @@ app.post('/api/ponto', async (req, res, next) => {
 
 app.post('/api/ponto/lote', async (req, res, next) => {
     try {
-        const { data, status } = req.body;
+        const { data, status } = corpoObjeto(req.body);
         if (!dataValida(data) || !STATUS_VALIDOS.has(status)) return res.status(400).json({ error: 'Dados do ponto inválidos.' });
         const supabase = getSupabase();
         const equipe = await buscarEquipe(supabase);
@@ -196,6 +221,8 @@ app.use((error, _req, res, _next) => {
     if (error instanceof SyntaxError && error.status === 400 && error.type === 'entity.parse.failed') {
         return res.status(400).json({ error: 'JSON inválido.' });
     }
+    const erroBanco = respostaErroBanco(error.cause);
+    if (erroBanco) return res.status(erroBanco.status).json({ error: erroBanco.mensagem });
     console.error('Erro na API:', error.cause || error);
     const configuracaoIncompleta = error.code === 'SUPABASE_NOT_CONFIGURED';
     const urlInvalida = error.code === 'SUPABASE_INVALID_URL';
