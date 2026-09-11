@@ -7,6 +7,7 @@ button { cursor: pointer; }
 .shell { max-width: 980px; margin: 0 auto; padding: 34px 20px 44px; }
 .topbar { background: #12232b; color: #e8f3f1; padding: 15px max(20px, calc((100vw - 940px) / 2)); display: flex; justify-content: space-between; align-items: center; box-shadow: 0 8px 24px #10252b1f; }
 .brand { color: #ffbd55; font: 700 18px 'Space Grotesk', sans-serif; letter-spacing: -.02em; }
+.brand small { display: block; color: #b8cfca; font: 500 10px 'DM Sans', sans-serif; letter-spacing: .04em; margin-top: 2px; }
 .eyebrow { color: var(--accent); font: 700 12px/1.2 Arial, sans-serif; letter-spacing: .12em; text-transform: uppercase; }
 h1, h2, h3 { margin: 0; font-family: 'Space Grotesk', sans-serif; letter-spacing: -.04em; }
 .heading { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-bottom: 20px; }

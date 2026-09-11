@@ -1,8 +1,8 @@
 import './globals.css';
 
 export const metadata = {
-    title: 'ObraPonto PRO | Gestão de diárias',
-    description: 'Controle de ponto, diárias e pagamentos para equipes de obra.'
+    title: 'Construtora GS | Gestão de diárias',
+    description: 'Controle de ponto, diárias e pagamentos da Construtora GS, de Gilberto Sucegan.'
 };
 
 export default function RootLayout({ children }) {

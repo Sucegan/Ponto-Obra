@@ -1,6 +1,6 @@
-# ObraPonto PRO
+# Construtora GS
 
-Sistema de ponto e diárias em Next.js, preparado para executar na Vercel com dados persistidos no Supabase.
+Sistema de ponto e diárias da Construtora GS, de Gilberto Sucegan, em Next.js, preparado para executar na Vercel com dados persistidos no Supabase.
 
 ## Configurar o Supabase
 

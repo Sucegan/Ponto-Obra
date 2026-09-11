@@ -119,7 +119,7 @@ export default function Home() {
   const total = (report || []).reduce((sum, item) => sum + Number(item.total_pagar), 0);
 
   return <>
-    <header className="topbar"><span className="brand">ObraPonto PRO</span><span>{today.split('-').reverse().join('/')}</span></header>
+    <header className="topbar"><span className="brand">Construtora GS <small>Gilberto Sucegan</small></span><span>{today.split('-').reverse().join('/')}</span></header>
     <main className="shell">
       {feedback && <div className="feedback" role="status">{feedback}</div>}
       <div className="heading"><div><div className="eyebrow">Gestão de obra</div><h1>Controle de diárias</h1><p>Equipe, presença e pagamentos em um só lugar.</p></div></div>
