@@ -40,6 +40,9 @@ function falhaSupabase(error) {
 function respostaErroBanco(error) {
     if (error?.code === '23505') return { status: 409, mensagem: 'Já existe um registro igual.' };
     if (error?.code === '23503') return { status: 409, mensagem: 'O funcionário informado não existe.' };
+    if (['42P01', 'PGRST205'].includes(error?.code) && error?.message?.includes('despesas')) {
+        return { status: 503, mensagem: 'A tabela financeira ainda não foi criada. Execute a migration 20260911180000_financeiro.sql no Supabase.' };
+    }
     return null;
 }
 

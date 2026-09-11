@@ -57,6 +57,7 @@ export default function Home() {
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState('');
   const [expenses, setExpenses] = useState([]);
+  const [financeError, setFinanceError] = useState('');
   const [expenseForm, setExpenseForm] = useState({ data: today, descricao: '', categoria: 'Materiais', valor: '', observacao: '' });
 
   const filteredTeam = useMemo(() => {
@@ -92,16 +93,18 @@ export default function Home() {
   async function refreshFinance() {
     const data = await api(`/api/financeiro?mes=${encodeURIComponent(month)}`);
     setExpenses(data.despesas || []);
+    setFinanceError('');
   }
 
   useEffect(() => {
-    Promise.all([refreshTeam(), refreshDashboard(), refreshAttendance(), refreshFinance()]).catch((error) => setFeedback(error.message));
+    Promise.all([refreshTeam(), refreshDashboard(), refreshAttendance()]).catch((error) => setFeedback(error.message));
+    refreshFinance().catch((error) => setFinanceError(error.message));
   }, []);
 
   useEffect(() => {
     if (view === 'dashboard') refreshDashboard().catch((error) => setFeedback(error.message));
     if (view === 'ponto') refreshAttendance().catch((error) => setFeedback(error.message));
-    if (view === 'financeiro') refreshFinance().catch((error) => setFeedback(error.message));
+    if (view === 'financeiro') refreshFinance().catch((error) => setFinanceError(error.message));
   }, [view, month, date]);
 
   function notify(message) {
@@ -549,6 +552,7 @@ export default function Home() {
 
         {view === 'financeiro' && (
           <section>
+            {financeError && <div className="feedback" role="alert">{financeError}</div>}
             <div className="panel no-print">
               <div className="section-heading">
                 <div><div className="section-kicker">Controle financeiro</div><h2>Custos da obra</h2></div>

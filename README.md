@@ -8,7 +8,8 @@ Sistema de ponto e diárias da Construtora GS, de Gilberto Sucegan, em Next.js, 
 2. No **SQL Editor**, execute o arquivo `supabase/migrations/20260911153649_initial_schema.sql`.
 3. Se quiser importar os três profissionais e os seis registros do `obra.db` original, execute também `supabase/seed.sql`.
 4. A migration `supabase/migrations/20260911170000_improvements.sql` cria o histórico de alterações e impede nomes duplicados entre funcionários ativos.
-5. Copie `.env.example` para `.env.local` e preencha:
+5. Execute também `supabase/migrations/20260911180000_financeiro.sql` para criar a tabela de despesas usada na aba Financeiro.
+6. Copie `.env.example` para `.env.local` e preencha:
    - `NEXT_PUBLIC_SUPABASE_URL`: URL pública do projeto. `SUPABASE_URL` continua aceito localmente por compatibilidade.
    - `SUPABASE_SERVICE_ROLE_KEY`: chave secreta do projeto (`sb_secret_...`). `SUPABASE_SECRET_KEY` continua aceito localmente por compatibilidade.
 

@@ -80,6 +80,24 @@ test('valida histórico mensal antes de consultar o banco', async () => {
     assert.deepEqual(await resposta.json(), { error: 'Mês inválido.' });
 });
 
+test('valida o mês do financeiro antes de consultar o banco', async () => {
+    const resposta = await fetch(`${baseUrl}/api/financeiro?mes=2026-14`);
+    assert.equal(resposta.status, 400);
+    assert.deepEqual(await resposta.json(), { error: 'Mês inválido.' });
+});
+
+test('valida despesa sem corpo antes de consultar o banco', async () => {
+    const resposta = await fetch(`${baseUrl}/api/financeiro`, { method: 'POST' });
+    assert.equal(resposta.status, 400);
+    assert.deepEqual(await resposta.json(), { error: 'Preencha data, descrição, categoria e valor corretamente.' });
+});
+
+test('valida id de despesa antes de consultar o banco', async () => {
+    const resposta = await fetch(`${baseUrl}/api/financeiro/abc`, { method: 'DELETE' });
+    assert.equal(resposta.status, 400);
+    assert.deepEqual(await resposta.json(), { error: 'Despesa inválida.' });
+});
+
 test('informa quando o Supabase ainda não foi configurado', async () => {
     const resposta = await fetch(`${baseUrl}/api/health`);
     assert.equal(resposta.status, 503);
