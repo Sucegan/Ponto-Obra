@@ -8,6 +8,10 @@ on:
       - '.github/workflows/supabase-migrations.yml'
   workflow_dispatch:
 
+concurrency:
+  group: supabase-migrations-${{ github.ref }}
+  cancel-in-progress: false
+
 jobs:
   migrate:
     runs-on: ubuntu-latest
@@ -24,5 +28,13 @@ jobs:
         with:
           version: latest
 
+      - name: Check database connection secret
+        shell: bash
+        run: |
+          if [ -z "$SUPABASE_DB_URL" ]; then
+            echo "Configure the SUPABASE_DB_URL repository secret before running migrations."
+            exit 1
+          fi
+
       - name: Apply database migrations
-        run: supabase db push --db-url "$SUPABASE_DB_URL"
+        run: supabase db push --db-url "$SUPABASE_DB_URL" --yes
