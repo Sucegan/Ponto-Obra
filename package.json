@@ -1,0 +1,17 @@
+{
+  "name": "ponto-obra-pro",
+  "version": "2.0.0",
+  "description": "Sistema Profissional de Ponto e Diárias para Obras",
+  "main": "server.js",
+  "scripts": {
+    "start": "node --env-file-if-exists=.env.local server.js",
+    "test": "node --test"
+  },
+  "engines": {
+    "node": ">=22"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "2.116.0",
+    "express": "5.2.1"
+  }
+}
