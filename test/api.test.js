@@ -61,6 +61,20 @@ test('valida o status do ponto antes de consultar o banco', async () => {
     assert.deepEqual(await resposta.json(), { error: 'Dados do ponto inválidos.' });
 });
 
+test('valida o funcionário do relatório antes de consultar o banco', async () => {
+    const resposta = await fetch(`${baseUrl}/api/relatorio?inicio=2026-09-01&fim=2026-09-11&funcionario_id=abc`);
+    assert.equal(resposta.status, 400);
+    assert.deepEqual(await resposta.json(), { error: 'Funcionário inválido.' });
+});
+
+test('valida edição sem consultar o banco', async () => {
+    const resposta = await fetch(`${baseUrl}/api/funcionarios/1`, {
+        method: 'PUT', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ nome: 'A', valor_diaria: 0 })
+    });
+    assert.equal(resposta.status, 400);
+});
+
 test('informa quando o Supabase ainda não foi configurado', async () => {
     const resposta = await fetch(`${baseUrl}/api/health`);
     assert.equal(resposta.status, 503);

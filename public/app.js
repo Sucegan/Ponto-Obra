@@ -49,7 +49,7 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('dataAtualBadge').textContent = hoje.split('-').reverse().join('/');
     document.getElementById('mesDashboard').addEventListener('change', carregarDashboard);
     document.getElementById('formCadastro').addEventListener('submit', cadastrarFuncionario);
-    Promise.allSettled([carregarDashboard(), carregarChamadaPonto(), carregarEquipe()]);
+    Promise.allSettled([carregarDashboard(), carregarChamadaPonto(), carregarEquipe(), carregarFiltroFuncionarios()]);
 });
 
 function switchView(viewName) {
@@ -70,6 +70,7 @@ async function carregarDashboard() {
         document.getElementById('dashEquipe').textContent = data.total_equipe || 0;
         document.getElementById('dashDias').textContent = data.total_dias || 0;
         document.getElementById('dashFaltas').textContent = data.total_faltas || 0;
+        document.getElementById('dashFeriados').textContent = data.total_feriados || 0;
         document.getElementById('dashGastos').textContent = moeda.format(Number(data.total_gastos) || 0);
     } catch (error) { mostrarMensagem(error.message, 'danger'); }
 }
@@ -160,7 +161,7 @@ async function cadastrarFuncionario(evento) {
             })
         });
         formulario.reset();
-        await Promise.all([carregarEquipe(), carregarChamadaPonto(), carregarDashboard()]);
+        await Promise.all([carregarEquipe(), carregarFiltroFuncionarios(), carregarChamadaPonto(), carregarDashboard()]);
         mostrarMensagem('Profissional cadastrado com sucesso.');
     } catch (error) { mostrarMensagem(error.message, 'danger'); }
     finally { botao.disabled = false; }
@@ -178,7 +179,8 @@ async function carregarEquipe() {
         container.innerHTML = funcionarios.map((f) => `<div class="card p-2 px-3 mb-2 d-flex flex-row justify-content-between align-items-center">
             <div><strong>${escapar(f.nome)}</strong> <small class="text-muted">(${escapar(f.cargo)})</small>
             <div class="text-success small fw-bold">${moeda.format(Number(f.valor_diaria))} / diária</div></div>
-            <button class="btn btn-sm btn-outline-danger border-0" onclick="desativarFuncionario(${f.id})" aria-label="Remover ${escapar(f.nome)}"><i class="fa-solid fa-trash"></i></button></div>`).join('');
+            <div class="d-flex gap-1"><button class="btn btn-sm btn-outline-primary border-0" onclick="editarFuncionario(${f.id}, '${escapar(f.nome)}', '${escapar(f.cargo)}', ${Number(f.valor_diaria)})" aria-label="Editar ${escapar(f.nome)}"><i class="fa-solid fa-pen"></i></button>
+            <button class="btn btn-sm btn-outline-danger border-0" onclick="desativarFuncionario(${f.id})" aria-label="Remover ${escapar(f.nome)}"><i class="fa-solid fa-trash"></i></button></div></div>`).join('');
     } catch (error) {
         container.innerHTML = '<div class="card p-4 text-center text-danger">Não foi possível carregar a equipe.</div>';
         mostrarMensagem(error.message, 'danger');
@@ -189,8 +191,31 @@ async function desativarFuncionario(id) {
     if (!window.confirm('Deseja remover este profissional da equipe ativa? O histórico será preservado.')) return;
     try {
         await api(`/api/funcionarios/${id}`, { method: 'DELETE' });
-        await Promise.all([carregarEquipe(), carregarChamadaPonto(), carregarDashboard()]);
+        await Promise.all([carregarEquipe(), carregarFiltroFuncionarios(), carregarChamadaPonto(), carregarDashboard()]);
         mostrarMensagem('Profissional removido da equipe ativa.');
+    } catch (error) { mostrarMensagem(error.message, 'danger'); }
+}
+
+async function carregarFiltroFuncionarios() {
+    const seletor = document.getElementById('relFuncionario');
+    if (!seletor) return;
+    try {
+        const funcionarios = await api('/api/funcionarios');
+        seletor.innerHTML = '<option value="">Toda a equipe</option>' + funcionarios.map((f) => `<option value="${f.id}">${escapar(f.nome)}</option>`).join('');
+    } catch (error) { mostrarMensagem(error.message, 'danger'); }
+}
+
+async function editarFuncionario(id, nomeAtual, cargoAtual, diariaAtual) {
+    const nome = window.prompt('Nome completo:', nomeAtual);
+    if (nome === null) return;
+    const cargo = window.prompt('Cargo:', cargoAtual);
+    if (cargo === null) return;
+    const diaria = window.prompt('Valor da diária:', diariaAtual);
+    if (diaria === null) return;
+    try {
+        await api(`/api/funcionarios/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ nome, cargo, valor_diaria: Number(diaria) }) });
+        await Promise.all([carregarEquipe(), carregarFiltroFuncionarios(), carregarChamadaPonto(), carregarDashboard()]);
+        mostrarMensagem('Profissional atualizado com sucesso.');
     } catch (error) { mostrarMensagem(error.message, 'danger'); }
 }
 
@@ -201,7 +226,9 @@ async function gerarRelatorio() {
     const container = document.getElementById('resultadoRelatorio');
     container.innerHTML = '<div class="card p-4 text-center text-muted">Gerando relatório…</div>';
     try {
-        const dados = await api(`/api/relatorio?inicio=${encodeURIComponent(inicio)}&fim=${encodeURIComponent(fim)}`);
+        const funcionario = document.getElementById('relFuncionario').value;
+        const filtro = funcionario ? `&funcionario_id=${encodeURIComponent(funcionario)}` : '';
+        const dados = await api(`/api/relatorio?inicio=${encodeURIComponent(inicio)}&fim=${encodeURIComponent(fim)}${filtro}`);
         if (!dados.length) {
             container.innerHTML = '<div class="card empty-state p-4 text-center text-muted">Nenhum profissional ativo para este relatório.</div>';
             return;
@@ -209,14 +236,19 @@ async function gerarRelatorio() {
         const totalGeral = dados.reduce((total, item) => total + Number(item.total_pagar), 0);
         const linhas = dados.map((d) => `<tr><td><strong>${escapar(d.nome)}</strong><br><small class="text-muted">${escapar(d.cargo)}</small></td>
             <td>${moeda.format(Number(d.valor_diaria))}</td><td><span class="badge bg-success">${d.dias_trabalhados}d</span></td>
-            <td><span class="badge bg-danger">${d.faltas}f</span></td><td class="fw-bold text-success">${moeda.format(Number(d.total_pagar))}</td></tr>`).join('');
+            <td><span class="badge bg-danger">${d.faltas}f</span></td><td><span class="badge bg-primary">${d.feriados}f</span></td><td class="fw-bold text-success">${moeda.format(Number(d.total_pagar))}</td></tr>`).join('');
         container.innerHTML = `<div class="card p-3"><h6 class="fw-bold mb-3 text-center">Resumo de pagamentos (${inicio.split('-').reverse().join('/')} até ${fim.split('-').reverse().join('/')})</h6>
-            <div class="table-responsive"><table class="table table-hover align-middle mb-0" id="tabelaRelatorioExport"><thead class="table-dark"><tr><th>Nome</th><th>Diária</th><th>Dias</th><th>Faltas</th><th>Total</th></tr></thead><tbody>${linhas}</tbody></table></div>
+            <div class="table-responsive"><table class="table table-hover align-middle mb-0" id="tabelaRelatorioExport"><thead class="table-dark"><tr><th>Nome</th><th>Diária</th><th>Dias</th><th>Faltas</th><th>Feriados</th><th>Total</th></tr></thead><tbody>${linhas}</tbody></table></div>
             <div class="alert alert-success mt-3 mb-0 text-end fw-bold fs-5">Total do período: ${moeda.format(totalGeral)}</div></div>`;
     } catch (error) {
         container.innerHTML = '';
         mostrarMensagem(error.message, 'danger');
     }
+}
+
+function imprimirRelatorio() {
+    if (!document.getElementById('tabelaRelatorioExport')) return mostrarMensagem('Gere o relatório antes de imprimir.', 'warning');
+    window.print();
 }
 
 function exportarExcel() {
