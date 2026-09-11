@@ -10,6 +10,7 @@ app.use('/api', (_req, res, next) => {
 });
 
 const STATUS_VALIDOS = new Set(['Trabalhou', 'Falta', 'Feriado']);
+const CATEGORIAS_FINANCEIRAS = new Set(['Materiais', 'Transporte', 'Alimentação', 'Ferramentas', 'Serviços', 'Outros']);
 const DATA_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MES_RE = /^\d{4}-\d{2}$/;
 
@@ -44,6 +45,25 @@ function respostaErroBanco(error) {
 
 function corpoObjeto(body) {
     return body && typeof body === 'object' && !Array.isArray(body) ? body : {};
+}
+
+function normalizarNome(valor) {
+    return String(valor || '').trim().replace(/\s+/g, ' ').toLowerCase();
+}
+
+async function nomeDuplicado(supabase, nome, ignorarId = null) {
+    const { data, error } = await supabase
+        .from('funcionarios')
+        .select('id,nome')
+        .eq('ativo', true);
+
+    if (error) throw falhaSupabase(error);
+
+    const alvo = normalizarNome(nome);
+    return (data || []).some((funcionario) => {
+        if (ignorarId !== null && Number(funcionario.id) === Number(ignorarId)) return false;
+        return normalizarNome(funcionario.nome) === alvo;
+    });
 }
 
 async function registrarAuditoria(supabase, entidade, entidadeId, acao, detalhes = {}) {
@@ -85,6 +105,10 @@ app.post('/api/funcionarios', async (req, res, next) => {
         }
 
         const supabase = getSupabase();
+        if (await nomeDuplicado(supabase, nome)) {
+            return res.status(409).json({ error: 'Já existe um profissional ativo com esse nome.' });
+        }
+
         const { data, error } = await supabase
             .from('funcionarios')
             .insert({ nome, cargo, valor_diaria: valorDiaria })
@@ -107,6 +131,10 @@ app.put('/api/funcionarios/:id', async (req, res, next) => {
             return res.status(400).json({ error: 'Preencha nome, cargo e valor da diária corretamente.' });
         }
         const supabase = getSupabase();
+        if (await nomeDuplicado(supabase, nome, Number(req.params.id))) {
+            return res.status(409).json({ error: 'Já existe um profissional ativo com esse nome.' });
+        }
+
         const { data, error } = await supabase.from('funcionarios')
             .update({ nome, cargo, valor_diaria: valorDiaria })
             .eq('id', Number(req.params.id)).eq('ativo', true)
@@ -281,6 +309,56 @@ app.get('/api/relatorio', async (req, res, next) => {
                 total_pagar: (c.Trabalhou + c.Feriado) * diaria
             };
         }));
+    } catch (error) { next(error); }
+});
+
+app.get('/api/financeiro', async (req, res, next) => {
+    try {
+        const mes = String(req.query.mes || '');
+        if (!mesValido(mes)) return res.status(400).json({ error: 'Mês inválido.' });
+        const inicio = `${mes}-01`;
+        const [ano, numeroMes] = mes.split('-').map(Number);
+        const fim = new Date(Date.UTC(ano, numeroMes, 1)).toISOString().slice(0, 10);
+        const { data, error } = await getSupabase().from('despesas')
+            .select('id,data,descricao,categoria,valor,observacao')
+            .gte('data', inicio).lt('data', fim)
+            .order('data', { ascending: false }).order('id', { ascending: false });
+        if (error) throw falhaSupabase(error);
+        const despesas = data || [];
+        res.json({ despesas, total_despesas: despesas.reduce((total, despesa) => total + Number(despesa.valor), 0) });
+    } catch (error) { next(error); }
+});
+
+app.post('/api/financeiro', async (req, res, next) => {
+    try {
+        const body = corpoObjeto(req.body);
+        const data = String(body.data || '');
+        const descricao = String(body.descricao || '').trim();
+        const categoria = String(body.categoria || '').trim();
+        const valor = Number(body.valor);
+        const observacao = String(body.observacao || '').trim();
+        if (!dataValida(data) || descricao.length < 2 || descricao.length > 160 || !CATEGORIAS_FINANCEIRAS.has(categoria) || !Number.isFinite(valor) || valor <= 0 || valor > 100000000 || observacao.length > 500) {
+            return res.status(400).json({ error: 'Preencha data, descrição, categoria e valor corretamente.' });
+        }
+        const supabase = getSupabase();
+        const { data: despesa, error } = await supabase.from('despesas')
+            .insert({ data, descricao, categoria, valor, observacao: observacao || null })
+            .select('id,data,descricao,categoria,valor,observacao').single();
+        if (error) throw falhaSupabase(error);
+        await registrarAuditoria(supabase, 'despesas', despesa.id, 'criada', { data, descricao, categoria, valor });
+        res.status(201).json(despesa);
+    } catch (error) { next(error); }
+});
+
+app.delete('/api/financeiro/:id', async (req, res, next) => {
+    try {
+        if (!idValido(req.params.id)) return res.status(400).json({ error: 'Despesa inválida.' });
+        const supabase = getSupabase();
+        const { data, error } = await supabase.from('despesas').delete().eq('id', Number(req.params.id)).select('id');
+        if (error) throw falhaSupabase(error);
+        if (!data?.length) return res.status(404).json({ error: 'Despesa não encontrada.' });
+        await registrarAuditoria(supabase, 'despesas', Number(req.params.id), 'excluida');
+        res.json({ message: 'Despesa excluída.' });
     } catch (error) { next(error); }
 });
 
