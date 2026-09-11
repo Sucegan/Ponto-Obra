@@ -79,4 +79,3 @@ test('informa quando o Supabase ainda não foi configurado', async () => {
     assert.equal(resposta.status, 503);
     assert.deepEqual(await resposta.json(), { error: 'Banco de dados ainda não configurado.' });
 });
-
